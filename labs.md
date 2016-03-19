@@ -137,3 +137,17 @@ f:  31 c9                   xor    ecx,ecx
 See _lab3A.py_.
 
 flag:sw00g1ty_sw4p_h0w_ab0ut_d3m_h0ps
+
+## Lab 4
+### Lab 4C
+* We simply need to leak the flag that is read into a buffer.
+* Format string vuln in the usernmae
+* Password buffer comes first, then real password, then username.
+* Fifth argument gets first 2 bytes of the password, and real password is 100 bytes later, meaning we must start at 5 + 100/4th -1 = 29th argument
+* Password is 30 characters long, so we must leak 8 dwords
+* See _lab4C.py_
+
+```bash
+lab4C@warzone:/levels/lab04$ python /tmp/lab4C.py
+bu7_1t_w4sn7_brUt3_f0rc34b1e!
+```
