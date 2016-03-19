@@ -151,3 +151,21 @@ flag:sw00g1ty_sw4p_h0w_ab0ut_d3m_h0ps
 lab4C@warzone:/levels/lab04$ python /tmp/lab4C.py
 bu7_1t_w4sn7_brUt3_f0rc34b1e!
 ```
+
+### Lab 4B
+* Single buffer with format string vuln.
+* Start of buffer at 6$.
+* Any char in A-Z (0x41-0x5a) will be made lower case.
+* `exit(0)` is called, so no overwriting RA.
+* `exit@got.plt` is at 0x080499b8.
+* Stack is executable, so we can point exit@plt to shell code
+* Shell code will be modified if any bytes are capital letters
+  * This includes `push eax` and `push ecx`.
+  * Easily replaced with `sub esp, 4; mov [esp], <reg>`.
+* See _lab4B.py_.
+
+```bash
+lab4B@warzone:/levels/lab04$ (python /tmp/lab4B.py; cat -) | ./lab4B
+cat ~lab4A/.pass
+fg3ts_d0e5n7_m4k3_y0u_1nv1nc1bl3
+```
