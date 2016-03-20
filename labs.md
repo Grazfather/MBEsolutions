@@ -206,3 +206,18 @@ Can you ROP to system()?
 cat ~lab5B/.pass
 s0m3tim3s_r3t2libC_1s_3n0ugh
 ```
+
+### Lab 5B
+* Statically compiled, so `system` is unavailable. Will need to do a ROP chain syscall.
+* 140 bytes to flow into RA of `main`.
+* Stack buf at 0xbffff6f0 (with `fixenv`)
+* Can put nulls on stack because of `gets`.
+  * This makes it very easy, we just need to set eax, ebx, and ecx correctly, we don't need to worry about using gadget to set up the args on the stack.
+* See _lab5B.py_.
+
+```bash
+lab5B@warzone:/levels/lab05$ (python /tmp/lab5B.py; cat -) | ./lab5B
+Insert ROP chain here:
+cat ~lab5A/.pass
+th4ts_th3_r0p_i_lik3_2_s33
+```
