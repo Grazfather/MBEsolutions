@@ -341,3 +341,22 @@ uid=1022(lab6C) gid=1023(lab6C) euid=1023(lab6B) groups=1024(lab6B),1001(gameuse
 cat ~lab6B/.pass
 p4rti4l_0verwr1tes_r_3nuff
 ```
+
+### Lab 6B
+* Password is read into a heap buffer from a file.
+* Password from file is 'hashed' by xoring each byte with the matching char in "lab6A", padded with 0x44, and stored back in _secret_pass_.
+* Prompts for username and password, which are 'hashed' together, with the same padding.
+* These hashes are compared, and if they match, a shell is spawned.
+* We can write strings without null bytes to username and password - This can leak the stored ebp, and also hash past the end of password.
+  * But in doing this, we will also 'hash' them, including corrupting the ra, but that will only fail when we run out of attempts... but our number of attempts is also corrupted.
+* If we enter two sets of usernames and passwords, we should be able to exploit. Although we can leak and even repair what we messed up while hashing, we don't need a to, since the functions always have the same page offset and are on the same page, we can just control how the RA is hashed:
+  * `login` is at 0xXXXXXaf4.
+  * `login_prompt` returns to main+189 (0xXXXXXf7e)
+
+1. Provide a username and password that are both 32 bytes in length (to hash beyond their end), and take care that the password that is 0x20 bytes before the RA on the stack, once hashed with the corresponding username, will have the RA to a value we want (0x058a)
+2. Provide a username and password that will restore the attempts value, that way we don't have a huge number of attempts to exhaust.
+   * Take care that we 'repair' the `attempts` count so we can cause `login_prompt` to return.
+   * To go from 0xXf7e to 0xXaf4, xor with 0x058a
+   * Because the hash hashes with the byte 0x20 bytes before itself, we need to put 0x8a at password + 0x14, 0x05 atpassword + 0x15.
+   * The bytes after will get corrupt, so we need to control how (and reverse it)
+   * We can put 0x20 at +0x16 and +0x17, and try twice to remove it.
