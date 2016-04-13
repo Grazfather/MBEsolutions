@@ -360,3 +360,5 @@ p4rti4l_0verwr1tes_r_3nuff
    * Because the hash hashes with the byte 0x20 bytes before itself, we need to put 0x8a at password + 0x14, 0x05 atpassword + 0x15.
    * The bytes after will get corrupt, so we need to control how (and reverse it)
    * We can put 0x20 at +0x16 and +0x17, and try twice to remove it.
+
+* See _lab6B.py_.
