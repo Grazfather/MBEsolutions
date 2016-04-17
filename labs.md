@@ -374,8 +374,8 @@ p4rti4l_0verwr1tes_r_3nuff
   * `print_name`.
 * Menu system, where choice 3 calls the function in the local `merchant.sfunc`.
   * Follows desc in struct
-* trivial buffer overflow in desc into sfunc in `setup_account`.
-* should also be a leak if you fill desc to the brim. We can leak it by overwriting the function pointer in `merchant` with the address to `print_name`.
+* Trivial buffer overflow in desc into sfunc in `setup_account`.
+* Should also be a leak if you fill desc to the brim. We can leak it by overwriting the function pointer in `merchant` with the address to `print_name`.
   * `print_listing` is at 0xb77XY9e0
   * `print_name` is at 0xb77XYbe2
   * We have to brute force the 'Y' nybble.
@@ -399,4 +399,27 @@ Enter your name: Enter your description: Enter Choice: $ id
 uid=1024(lab6A) gid=1025(lab6A) euid=1025(lab6end) groups=1026(lab6end),1001(gameuser),1025(lab6A)
 $ cat ~lab6end/.pass
 eye_gu3ss_0n_@ll_mah_h0m3w3rk
+```
+
+## Lab 7
+### Lab 7C
+* Can allocate up to 6 'strings' and 6 'numbers'
+  * Actually both structs (`data` and `number`), 32 bytes each.
+  * Both have function pointers, at `data+28` and `number+24`.
+* When a number or string is deleted, the pointer is held (uaf).
+* We can leak function address by creating a number, deleting it (to get it's pointer but free its memory), create a string (using that memory but setting the function pointer), and then print the number.
+* Once we have a leak, we can delete everything, create a string with the argument we want, then delete it (preserving its pointer and value) then create a num on top. The string is _not_ overwritten since it's mostly within the num's reserved bytes.
+* Finish by printing out the number.
+* See _lab7C.py_.
+
+```bash
+lab7C@warzone:/levels/lab07$ python /tmp/lab7C.py
+[+] Starting program '/levels/lab07/lab7C': Done
+[*] [2812]
+[*] Leaked short_str: 0xb775bbc7
+[*] Switching to interactive mode
+$ id
+uid=1026(lab7C) gid=1027(lab7C) euid=1027(lab7A) groups=1028(lab7A),1001(gameuser),1027(lab7C)
+$ cat ~lab7A/.pass
+us3_4ft3r_fr33s_4re_s1ck
 ```
