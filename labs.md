@@ -423,3 +423,52 @@ uid=1026(lab7C) gid=1027(lab7C) euid=1027(lab7A) groups=1028(lab7A),1001(gameuse
 $ cat ~lab7A/.pass
 us3_4ft3r_fr33s_4re_s1ck
 ```
+
+### Lab 7A
+
+* ASLR, Partial RELRO, stack canaries, NX.
+* **Statically linked**, with symbols
+* Message struct holds a function pointer, the xor pad, the message, and the length of the message.
+* Message and xor pad are stored as array of 32 4-byte ints. (128 bytes).
+* There's an array of 10 message pointers.
+* When a message is created, the first empty slot is selected.
+* When a message is destroyed, that message is freed and the corresponding pointer is wiped out.
+* xor pad is created randomly.
+* Four choices in the menu.
+  1. Create message
+  2. Edit message
+  3. Destroy message
+  4. Print message (128 bytes always)
+* We can enter a message that is up to 3 (`BLOCK_SIZE - 1`) bytes longer than there is room for when we create it
+  * This will overflow into the length, allowing subsequent writes to write farther.
+  * The encryption won't overflow, so we don't need to worry about our value getting messed up.
+* Edit message doesn't check that the size is valid, allowing us to write much more.
+  * We can overflow into the next message's `print_msg` pointer.
+* Each allocation is 272 bytes from the previous (`struct msg` is 264 bytes).
+* We can put data on the stack in the numbuf that `print_index` fills (when requesting the index). We need to make sure `strtoul` can still parse it, though.
+  * numbuf starts 0x1c bytes after esp, so we need a gadget that does `add esp, xxx`.
+* Now with the stack in numbuf, we have room for a few gadgets to make esp point to the overflowed buffer.
+* edx holds the address of message 2.
+* It was tricky to find how to get it into esp. Ended up being only `mov eax, edx; ret; xchg eax, esp; ret`.
+* This will set _back_ to the `add esp, xxx` gadget! That's fine, since it'll add to esp just father into the overflow buffer.
+* Using `ROPGadget --binary lab7A --ropchain` it generated a rop chain that worked on the first try.
+* See _lab7A.py_.
+
+```bash
+lab7A@warzone:/levels/lab07$ python /tmp/lab7A.py
+[+] Starting program '/levels/lab07/lab7A': Done
+[*] [4597]
+[*] Paused (press any to continue)
+[*] Creating first message
+[*] Paused (press any to continue)
+[*] Creating second message
+[*] Editing first message
+[*] Paused (press any to continue)
+[*] Printing second message
+[*] Switching to interactive mode
+ -----------------------------------------
+-Input message index to print: $ id
+uid=1027(lab7A) gid=1028(lab7A) euid=1028(lab7end) groups=1029(lab7end),1001(gameuser),1028(lab7A)
+$ cat ~lab7end/.pass
+0verfl0wz_0n_th3_h3ap_4int_s0_bad
+```
