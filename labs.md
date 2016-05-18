@@ -474,7 +474,7 @@ $ cat ~lab7end/.pass
 ```
 
 ## Lab 8
-### Lab8C
+### Lab 8C
 
 1. Parses both args
 2. Opens files, but won't follow symlinks (O_NOFOLLOW)
@@ -494,4 +494,40 @@ We can trick it by passing _/home/level8B/.pass_ as the first file, which opens 
 ```bash
 lab8C@warzone:/levels/lab08$ ./lab8C -fn=/home/lab8B/.pass -fd=3
 "<<<For security reasons, your filename has been blocked>>>" is lexicographically equivalent to "3v3ryth1ng_Is_@_F1l3"
+```
+
+### Lab 8B
+* nx, aslr, PIE, canary.
+* Three global vectors, plus an array of ten vector pointers
+* v3 is intended as the sum vector.
+* Vectors aren't in the code's order in the binary for some reason:
+  * v1: 0x3040
+  * v2: 0x3100
+  * v3: 0x3080
+  * faves: 0x30c0
+  * So true order is: v1->v3->faves->v2
+* Each vector starts with its `printFunc` pointing to `printf` but that is changed to `printVector` when you fill it with data.
+* Saving a favorite copies the current sum (v3) into a new allocation and saves its pointer in next slot of `faves`.
+  * This function has a bug where it starts copying 4*index bytes after the start of the vec.
+* `printFaves` doesn't use the favorite's function pointer, it calls `printVector` directly.
+* `loadFaves` will load an arbitrary favorite into a target vector.
+* We can put values in v1 and v2 so that their sum is the address of `thisIsASecret`. We can then 'shift' this into the pointer in a favorite, and then copy it into a vector and print it.
+* We need to take care that it's in an unsigned, 4 byte part of the vector, since the address has the msb set (or get trickier with negatives).
+* Because of PIE we also need to 'leak' the address of `printVector` and use the offset from there.
+  * We can just print the first vector right away: That gives the address of its `printFunc`.
+* See _lab8B.py_
+
+```bash
+lab8B@warzone:/levels/lab08$ python /tmp/lab8B.py
+[+] Starting program '/levels/lab08/lab8B': Done
+[*] [1923]
+[*] Paused (press any to continue)
+[*] Print func at 0xb77270e9
+[*] Secret func at 0xb77270a7
+[*] Switching to interactive mode
+...
+$ id
+uid=1030(lab8B) gid=1031(lab8B) euid=1031(lab8A) groups=1032(lab8A),1001(gameuser),1031(lab8B)
+$ cat ~lab8A/.pass
+Th@t_w@5_my_f@v0r1t3_ch@11
 ```
