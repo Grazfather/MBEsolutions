@@ -472,3 +472,26 @@ uid=1027(lab7A) gid=1028(lab7A) euid=1028(lab7end) groups=1029(lab7end),1001(gam
 $ cat ~lab7end/.pass
 0verfl0wz_0n_th3_h3ap_4int_s0_bad
 ```
+
+## Lab 8
+### Lab8C
+
+1. Parses both args
+2. Opens files, but won't follow symlinks (O_NOFOLLOW)
+3. Checks for bad file descriptors
+4. Checks if fd is STDIN (0)
+5. Compares the strings
+   1. Allocs the fileComp struct
+   2. Gets size of each file (fail if 255 bytes or bigger)
+   3. Allocates buffer
+   4. Reads it in
+   5. Runs strcmp and stores result in the fileComp struct
+6. Checks the filename doesn't contain ".pass"
+7. Prints out both strings (or error message)
+
+We can trick it by passing _/home/level8B/.pass_ as the first file, which opens it, and then passing its file descriptor (3) as the second.
+
+```bash
+lab8C@warzone:/levels/lab08$ ./lab8C -fn=/home/lab8B/.pass -fd=3
+"<<<For security reasons, your filename has been blocked>>>" is lexicographically equivalent to "3v3ryth1ng_Is_@_F1l3"
+```
