@@ -531,3 +531,33 @@ uid=1030(lab8B) gid=1031(lab8B) euid=1031(lab8A) groups=1032(lab8A),1001(gameuse
 $ cat ~lab8A/.pass
 Th@t_w@5_my_f@v0r1t3_ch@11
 ```
+
+### Lab 8A
+
+* Implements their own stack canary ("cookie") in `findSomeWords`
+* Manual canary check saves a pointer to the canary plus the address 8 bytes before that and makes sure that they two xored = the canary xor 0xdeadbeef
+  * Since we need to keep the canary the same, that means that we need the other value to be 0xdeadbeef.
+* Need to leak the canary, which can be done in the previous function, using a format string vuln.
+  * Argument `130$` leaks the canary.
+* We can now build a string that contains 0xdeadbeef 16 bytes into the buffer, plus replace the canary.
+* This will write a null bytes into the EBP, making the stack end up in a weird state, so we need to keep the ebp correct.
+  * We can just leak the ebp from the previous function. Both functions take the same number of args so we don't even need to adjust it.
+  * Argument `131$`.
+* But now the RA will have the null byte. Luckily the RA is static, so we can just put it back.
+* See _lab8A.py_
+
+```bash
+lab8A@warzone:/levels/lab08$ python /tmp/lab8A.py
+[+] Starting program '/levels/lab08/lab8A': Done
+[*] [1197]
+[*] Paused (press any to continue)
+[*] Leaking canary and saved ebp
+[*] Got canary 0x6337ac00
+[*] Got ebp 0xbffff6b8
+[*] Check is expecting 0xbd9a12ef
+[*] Sending AAAAAAAAAAAAAAAAÔæ≠___\x00\xac7c\xb8ˆˇøx91\x0
+[*] Program '/levels/lab08/lab8A' stopped with exit code 0
+
+    [===] Whew you made it !
+
+```
