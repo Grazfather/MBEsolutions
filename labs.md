@@ -626,3 +626,22 @@ uid=1034(lab9A) gid=1035(lab9A) euid=1035(lab9end) groups=1036(lab9end),1001(gam
 $ cat ~lab9end/.pass
 1_d1dNt_3v3n_n33d_4_Hilti_DD350
 ```
+
+## Project 2
+* PIE, full RELRO.
+* _not_ stripped.
+* Three keys are read on boot. Each is used in a different 'level'.
+* Seems there is some anti-dissassembly: many functions try to mess with IDA's sp accounting. We can get around this by changing the stack offset of the skipped over `add esp, 4` instruction to 0.
+
+### Key 1
+* First key is a strncmp against _GENERAL_HOTZ.key_.
+1. 256 byte buffer is allocated
+2. hotzkey buffer is copied to buffer + 128.
+3. 128 bytes of input is read into a local buffer.
+4. That input has its length checked, subtracted by one, and then that many bytes are copied from the input buf to the first half of the allocated buffer.
+5. Local buffer is `memset` back to 0.
+6. `strlen` of the hotzkey (32).
+7. `strncmp` on the two halves of the alloced buffer.
+
+* At step 4, if the len is 0, then the length will underflow, making the memset write 255 bytes, overwriting the hotzkey.
+* This makes the strncmp pass since it's comparing two empty strings.
