@@ -645,3 +645,44 @@ $ cat ~lab9end/.pass
 
 * At step 4, if the len is 0, then the length will underflow, making the memset write 255 bytes, overwriting the hotzkey.
 * This makes the strncmp pass since it's comparing two empty strings.
+
+```bash
+(printf "1\n\x00\n"; cat -) | ./rpisec_nuke
+```
+
+* There is a use after free in Key3: The keybuf is allocated and then freed, but the pointer remains
+  * It only frees if you enter a bad session id
+  * We can force either key 1 or 2 to allocated this same buffer.
+* The menu prints a session number: This is actually the address of the key buffer that is first allocated.
+
+## Key 1
+* Takes a key using `read` and then uses `strlen` and `strncmp` to compare to the HOTZ key.
+* If you provide a key of length 0, the `strncmp` will pass.
+
+## Key 2
+* Encrypts your input with your key and a hardcoded IV in AES 128 in CBC mode
+* Encrypts the same input with the key in KEY_CROWELL.key and the same IV
+* Compares the first 16 or 32 bytes of both and expects them to be the same.
+* in size is 16 or 32 bytes
+* When the encryption is done, the IV is overwritten with the ct
+
+## Key 3
+* Requests the session ID, which is the address of the main buffer
+* Prints the current epoch time (in seconds), and the challenge is just 16 calls to `rand`.
+* Seed: time() + session id
+* This means that we can figure out the seed by going back in time and try a range of different times as the seed until we get a first rand that matches the first 4 bytes of the challenge.
+* Challenge is built by calling `rand` 16 times, XORing its value with the value in the buf at 4 + 4*index
+  * This overwrites 64 bytes of the buffer that could be shared with key2: the in buf, the IV, and the crowell key
+* Before the input is compared to the challenge buffer:
+  * Another round of 16 `rand` calls are made and xored into the challenge.
+  * The 4 DWORDs of the DOOM key are xored against bytes 0, 20, 40, and 60, respectively.
+    * This is the ONLY part we can't easily predict.
+* On failure this buffer is memset to 0.
+* On success offset 0x84 is set to 0x31337. This overlaps with part of key2s user key CT.
+  * We must craft a pt/key combo that yields that value in that location
+
+## Solution
+* Because we can 'share' the buffer between 2 and 3, we can get 3 to print out the challenge after it contains the crowell key (xored with random data). If we also have the seed we can extract the key to solve key 2.
+* Because we can get the seed by comparing `rand()` to the challenge, we can run key2, which will copy the key into the buffer, and then extract it from key3 by xoring out the random challenge. We can then go back to challenge 2 with the known key and provide that key along with the expected plaintext to pass.
+* Although key3 only memsets the challenge on failure, but always checks if the 0x84 offet is set to 0x31337, if we can craft a plaintext that will encrypt to a ct that contains that value at that offset (first 4 bytes of the second block) we can pass key 3.
+  * This can be done by simply adding this value (plus padded 0 junk to 2 blocks) to the expected CT from key 2 and then decrypt it.
