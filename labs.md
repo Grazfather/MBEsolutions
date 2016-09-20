@@ -686,3 +686,23 @@ $ cat ~lab9end/.pass
 * Because we can get the seed by comparing `rand()` to the challenge, we can run key2, which will copy the key into the buffer, and then extract it from key3 by xoring out the random challenge. We can then go back to challenge 2 with the known key and provide that key along with the expected plaintext to pass.
 * Although key3 only memsets the challenge on failure, but always checks if the 0x84 offet is set to 0x31337, if we can craft a plaintext that will encrypt to a ct that contains that value at that offset (first 4 bytes of the second block) we can pass key 3.
   * This can be done by simply adding this value (plus padded 0 junk to 2 blocks) to the expected CT from key 2 and then decrypt it.
+
+## Lab 10
+### Lab 10C
+* Kernel module
+* You can write to the _/dev/pwn_ device to interact with the kernel module.
+  * If you write a "\x01" it'll tell you that the flag is in _/root/flag_.
+  * If the first four bytes have the value 0xcafebabe then it'll check for auth.
+  * If you write 0x31337 bytes it'll check for auth
+* Auth:
+  1. First it loops over your buffer and xors each byte with the randomized 'sekret'.
+  2. It then gets a 32 bit checksum and ensures it's zero (which would happen if your input matches the randomized secret).
+  3. If this passes it sets your auth to 1. If it fails it wipes out the secret, the auth, and the function pointer to the auth function.
+    * Next attempt will try to call a function at 0x00000000. If we can map something here we can exploit it.
+    * There is also a one-byte overflow, into the lsb of the function pointer.
+* Have to set `mmap_min_addr` to 0
+* By `mmap`ping to 0x00000000 I can put code where the kernel will jump to when it dereferences the null pointer. I can pull malicious code here.
+  * So that I didn't have to worry about PIE code I just used the address of my pwn function and patched it into a near `jmp` at 0.
+* Can find the address of `prepare_kernel_cred` and `commit_creds` by looking at _/proc/kallsyms_. Use these addresses to make function pointers, and then call them from the function that the instruction at 0 will jump to.
+* At first it didn't work because the userspace code was compiling the call to the two functions with a 'normal' abi. Needed to add `__attribute__((regparm(3)))` to the prototype to cause the compiler to pass its args in registers.
+* See _lab10Cpwn.c_

