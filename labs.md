@@ -706,3 +706,51 @@ $ cat ~lab9end/.pass
 * Can find the address of `prepare_kernel_cred` and `commit_creds` by looking at _/proc/kallsyms_. Use these addresses to make function pointers, and then call them from the function that the instruction at 0 will jump to.
 * At first it didn't work because the userspace code was compiling the call to the two functions with a 'normal' abi. Needed to add `__attribute__((regparm(3)))` to the prototype to cause the compiler to pass its args in registers.
 * See _lab10Cpwn.c_
+
+### Lab 10A
+* Kernel module
+* Basic functionality:
+  * On init the device is registered as well as two linked lists containing the disallow and callback filters. `nf_register_hook` used to set up `pkt_hook`.
+  * Write a command to _/dev/pwn_. First byte is the command, the following bytes are the payload.
+    * 0x01: Print out flag location.
+    * 0x02: Add a disallow filter.
+    * 0x03: Add a callback filter.
+    * 0x04: Modify a callback function.
+    * 0x05: Emulate a packet arriving.
+  * Filter lists are doubly linked lists with a sentinel head node.
+  * `pkt_hook`:
+    1. Walks the callback filter linked list trying to find a filter with a matching protocol, and then calls that filter's callback function. Return `NF_ACCEPT` if a match is found.
+    2. Walks the disallow filter linked list trying to find a filter with a matching protocol. On match it returns `NF_DROP`.
+    3. Returns `NF_ACCEPT`.
+  * `emulate_packet`: Basically does pkt_hook but with no packet: Just the protocol is provided to match against.
+  * `add_cfilter`: Allocs a new linked list node and appends it to the cfilter linked list. Doesn't check for duplicate filter, and the callback is hardcoded to `default_callback`.
+  * `add_dfilter`: Allocs a new linked list node and appends it to the dfilter linked list. Doesn't check for duplicate filters.
+  * `remove_defilter`: Finds a filter with a matching protocol and removes it from the list. Frees the node.
+    * This could cause a crash if the sentinel node (`pr_num == -1`) is removed.
+  * `modify_callback`:
+    * Copies 8 bytes from the written buffer: four for the ID and four for the address.
+    * Makes sure that the address isn't in userspace
+    * Finds a matching filter by ID (not by protocol) and sets its callback address to the one provided.
+  * We can write a simple shellcode that jumps to the `prepare_kernel_cred` and `commit_creds` combo into a bogus filter.
+    * `push <addr>; ret` works great, and we don't have to calculate an offset.
+  * Need the address of this filter, but luckily the driver prints it out for us to `dmesg`.
+  * See _lab10Apwn.c_.
+
+```bash
+user@debian-i386:/tmp$ ./a.out
+Found prepare_kernel_cred at 0xc10529cc
+Found commit_creds at 0xc1052761
+Will try to return to 0x804868c
+Opening /dev/pwn
+Creating a callback filter
+Creating a disallow filter containing a ret-to-userspace shellcode
+Taking address of shellcode from dmesg
+Got addr 0xF7206880
+Changing the callback address of my callback filter to point to this shellcode
+time to check...
+
+Emulating a packet to trigger callback
+Running shell
+# id
+uid=0(root) gid=0(root) groups=0(root)
+```
