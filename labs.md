@@ -407,7 +407,7 @@ eye_gu3ss_0n_@ll_mah_h0m3w3rk
   * Actually both structs (`data` and `number`), 32 bytes each.
   * Both have function pointers, at `data+28` and `number+24`.
 * When a number or string is deleted, the pointer is held (uaf).
-* We can leak function address by creating a number, deleting it (to get it's pointer but free its memory), create a string (using that memory but setting the function pointer), and then print the number.
+* We can leak function address by creating a number, deleting it (to get its pointer but free its memory), create a string (using that memory but setting the function pointer), and then print the number.
 * Once we have a leak, we can delete everything, create a string with the argument we want, then delete it (preserving its pointer and value) then create a num on top. The string is _not_ overwritten since it's mostly within the num's reserved bytes.
 * Finish by printing out the number.
 * See _lab7C.py_.
@@ -600,7 +600,7 @@ $ cat ~lab9A/.pass
 * Allows you to allocate unlimited `hashset_int`s, into one of 8 slots.
 * We can allocate an array of ints of any size when we create a hash set.
 * Use after free.
-* We want to allocated a few hashsets, free them, and then allocate a larger one over the old ones so that we can control the vtable pointer.
+* We want to allocate a few hashsets, free them, and then allocate a larger one over the old ones so that we can control the vtable pointer.
 * Need to leak both libc (for `system`) and the heap address.
 * Want to overwrite the `add` method in the vtable.
 * Because the `this` argument is implicit, but we control the second, we need to jump farther into `system` so that the stack is offset by four.

