@@ -632,6 +632,7 @@ $ cat ~lab9end/.pass
 * _not_ stripped.
 * Three keys are read on boot. Each is used in a different 'level'.
 * Seems there is some anti-dissassembly: many functions try to mess with IDA's sp accounting. We can get around this by changing the stack offset of the skipped over `add esp, 4` instruction to 0.
+* After solving the three keys, there's a fourth key where you try to get a shell.
 
 ### Key 1
 * First key is a strncmp against _GENERAL_HOTZ.key_.
@@ -654,10 +655,6 @@ $ cat ~lab9end/.pass
   * It only frees if you enter a bad session id
   * We can force either key 1 or 2 to allocated this same buffer.
 * The menu prints a session number: This is actually the address of the key buffer that is first allocated.
-
-## Key 1
-* Takes a key using `read` and then uses `strlen` and `strncmp` to compare to the HOTZ key.
-* If you provide a key of length 0, the `strncmp` will pass.
 
 ## Key 2
 * Encrypts your input with your key and a hardcoded IV in AES 128 in CBC mode
@@ -684,8 +681,30 @@ $ cat ~lab9end/.pass
 ## Solution
 * Because we can 'share' the buffer between 2 and 3, we can get 3 to print out the challenge after it contains the crowell key (xored with random data). If we also have the seed we can extract the key to solve key 2.
 * Because we can get the seed by comparing `rand()` to the challenge, we can run key2, which will copy the key into the buffer, and then extract it from key3 by xoring out the random challenge. We can then go back to challenge 2 with the known key and provide that key along with the expected plaintext to pass.
-* Although key3 only memsets the challenge on failure, but always checks if the 0x84 offet is set to 0x31337, if we can craft a plaintext that will encrypt to a ct that contains that value at that offset (first 4 bytes of the second block) we can pass key 3.
+* Although key3 only memsets the challenge on failure, but always checks if the 0x84 offset is set to 0x31337, if we can craft a plaintext that will encrypt to a ct that contains that value at that offset (first 4 bytes of the second block) we can pass key 3.
   * This can be done by simply adding this value (plus padded 0 junk to 2 blocks) to the expected CT from key 2 and then decrypt it.
+
+## Key 4
+* Asks for some buffer. Calculates a 4 byte checksum on it.
+* The checksum must match the XOR of the other 3 keys auths
+  hotz = 0x0CAC380CD
+  crowell = 0x0BADC0DED
+  doom = 0x0ACC3D489
+  checksum = 0xDCDC59a9
+* Checksum is just the XOR of every 4 byte chunk
+* "DNE\x00", which is added to the ended, is part of the checksum.
+* The values you pass as used as commands in `launch_nuke`
+  * You can push a cursor around
+  * You can read the byte add, or write a byte to the cursor
+  * You can call the reprogram function again, writing in a new program
+  * You can cause the program to call the function pointed to by the disarm_nuke pointer of the detonate_nuke pointer.
+    * These pointers are 128 bytes after where the cursor starts, and there is no bounds checking.
+  * We can use this to read out the function pointer, getting us the base of the binary (since it's PIE we need to)
+  * We can reprogram to reset the cursor and then overwrite the pointer.
+  * We can easily pivot to the start of the cursor buffer and do a ROP from there.
+  * They troll us by hooking system to give a fake shell -- We need a real ROP
+  * On Ubuntu before Xenial the libc offset is constant from the main binary when PIE is enabled.
+    * That makes the function pointer leak a libc leak, giving us more gadgets.
 
 ## Lab 10
 ### Lab 10C

